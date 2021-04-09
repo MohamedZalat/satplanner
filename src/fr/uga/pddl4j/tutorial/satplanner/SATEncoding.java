@@ -44,7 +44,7 @@ public final class SATEncoding {
         for (int i = 0; i < init.cardinality(); i++)
         {
             cpt = init.nextSetBit(cpt);
-            list_init += pair(cpt, this.steps);
+            list_init += cpt;
             if(i != init.cardinality()-1)
             {
                 list_init += ".";
@@ -65,7 +65,7 @@ public final class SATEncoding {
         for (int i = 0; i < goal.cardinality(); i++)
         {
             cpt = goal.nextSetBit(cpt);
-            list_goal += pair(cpt, this.steps);
+            list_goal += cpt;
             if(i != goal.cardinality()-1)
             {
                 list_goal += ".";
@@ -91,7 +91,7 @@ public final class SATEncoding {
             {
 
                 cpt = precond.nextSetBit(cpt);
-                list_inter += pair(cpt, this.steps);
+                list_inter += cpt;
                 if(j != precond.cardinality()-1)
                 {
                     list_inter += ".";
@@ -107,7 +107,7 @@ public final class SATEncoding {
             for (int j = 0; j < positive.cardinality(); j++)
             {
                 cpt = positive.nextSetBit(cpt);
-                list_inter += pair(cpt, this.steps);
+                list_inter += cpt;
                 if(j != positive.cardinality()-1)
                 {
                     list_inter += ".";
@@ -123,7 +123,7 @@ public final class SATEncoding {
             for (int j = 0; j < negative.cardinality(); j++)
             {
                 cpt = negative.nextSetBit(cpt);
-                list_inter += -(pair(cpt, this.steps));
+                list_inter += -cpt;
                 if(j != negative.cardinality()-1)
                 {
                     list_inter += ".";
@@ -153,7 +153,7 @@ public final class SATEncoding {
         return this.dimacs;
     }
 
-    private static int pair(int a, int b)
+    public static int pair(int a, int b)
     {
         int result =  (a + b) * (a + b + 1)/2 + b;
         return result;

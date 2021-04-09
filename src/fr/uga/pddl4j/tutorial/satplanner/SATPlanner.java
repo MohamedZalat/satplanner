@@ -90,7 +90,7 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
             boolean solved = false;
             SATEncoding sat = new SATEncoding(problem, steps);
 
-            while (step <steps && !solved) {
+            while (step <steps/* && !solved*/) {
 
                 // Feed the solver using Dimacs format, using arrays of int
                 for (int i=0; i < sat.getDimacs().size(); i++) {
@@ -104,7 +104,7 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                     //System.out.println("Clause "+i);
 
                     for (int index = 0; index < tab_list.length; index++) {
-                        clause[index] =Integer.parseInt(tab_list[index]);
+                        clause[index] = sat.pair(Integer.parseInt(tab_list[index]),step);
 
                         //  System.out.print(clause[index]+ "  ,  ");
                     }
@@ -123,7 +123,7 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                 try {
                     if (ip.isSatisfiable())
                     {
-                        solved = true;
+                        step++;
                         //TODO
                         System.out.println("Solution FOUND!");
                         int[] resultat = ip.model();
@@ -141,7 +141,6 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                     else
                     {
                         //TODO
-                        step++;
                     }
                 } catch (TimeoutException e){
                     System.out.println("Timeout! No solution found!");
