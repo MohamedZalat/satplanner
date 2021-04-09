@@ -84,7 +84,8 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
             solver.setExpectedNumberOfClauses(NBCLAUSES);
 
             // SAT Encoding starts here!
-            //final int steps = (int) arguments.get("steps");
+            final int steps = (int) arguments.get("steps");
+            SATEncoding sat = new SATEncoding(problem, steps);
 
             // Feed the solver using Dimacs format, using arrays of int
             for (int i=0; i < NBCLAUSES; i++) {
@@ -92,6 +93,8 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                 // with absolute values less or equal to MAXVAR
                 // e.g. int [] clause = {1, -3, 7}; is fine
                 // while int [] clause = {1, -3, 7, 0}; is not fine
+            	
+            	
                 int [] clause = {};
                 try {
                     solver.addClause(new VecInt(clause)); // adapt Array to IVecInt
