@@ -85,53 +85,69 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
 
             // SAT Encoding starts here!
             final int steps = (int) arguments.get("steps");
+
+            int step= 1;
+            boolean solved = false;
             SATEncoding sat = new SATEncoding(problem, steps);
 
-            // Feed the solver using Dimacs format, using arrays of int
-            for (int i=0; i < NBCLAUSES; i++) {
-                // the clause should not contain a 0, only integer (positive or negative)
-                // with absolute values less or equal to MAXVAR
-                // e.g. int [] clause = {1, -3, 7}; is fine
-                // while int [] clause = {1, -3, 7, 0}; is not fine
+            while (step <steps && !solved) {
 
-                /*
-                //décodage d'une clause
-                int[] decode_goal = new int[2];
-                String[] tab_list = list_goal.split("\\.");
+                // Feed the solver using Dimacs format, using arrays of int
+                for (int i=0; i < sat.getDimacs().size(); i++) {
+                    // the clause should not contain a 0, only integer (positive or negative)
+                    // with absolute values less or equal to MAXVAR
+                    // e.g. int [] clause = {1, -3, 7}; is fine
+                    // while int [] clause = {1, -3, 7, 0}; is not fine
 
-                for (int i = 0; i < tab_list.length; i++)
-                {
-                    int[] tab_res = unpair(Integer.parseInt(tab_list[i]));
-                    decode_goal[i] = tab_res[0];
+                    String[] tab_list = sat.getDimacs().get(i).split("\\.");
+                    int [] clause = new int[tab_list.length];
+                    //System.out.println("Clause "+i);
+
+                    for (int index = 0; index < tab_list.length; index++) {
+                        clause[index] =Integer.parseInt(tab_list[index]);
+
+                        //  System.out.print(clause[index]+ "  ,  ");
+                    }
+                    //System.out.println();
+
+                    try {
+                        solver.addClause(new VecInt(clause)); // adapt Array to IVecInt
+                    } catch (ContradictionException e){
+                        System.out.println("SAT encoding failure!");
+                        System.exit(0);
+                    }
                 }
-            	*/
-                
-                int [] clause = {};
+
+                // We are done. Working now on the IProblem interface
+                IProblem ip = solver;
                 try {
-                    solver.addClause(new VecInt(clause)); // adapt Array to IVecInt
-                } catch (ContradictionException e){
-                    System.out.println("SAT encoding failure!");
+                    if (ip.isSatisfiable())
+                    {
+                        solved = true;
+                        //TODO
+                        System.out.println("Solution FOUND!");
+                        int[] resultat = ip.model();
+
+                        for (int r:resultat) {
+                            int[] resDecoded;
+                            if(r<0){
+                                resDecoded = sat.unpair(-r);
+                            }else{
+                                resDecoded = sat.unpair(r);
+                            }
+                            System.out.println("step :"+resDecoded[1]+" op:"+resDecoded[0]);
+                        }
+                    }
+                    else
+                    {
+                        //TODO
+                        step++;
+                    }
+                } catch (TimeoutException e){
+                    System.out.println("Timeout! No solution found!");
                     System.exit(0);
                 }
             }
-
-            // We are done. Working now on the IProblem interface
-            IProblem ip = solver;
-            try {
-                if (ip.isSatisfiable())
-                {
-                    //TODO
-
-                }
-                else
-                {
-                    //TODO
-                }
-            } catch (TimeoutException e){
-                System.out.println("Timeout! No solution found!");
-                System.exit(0);
-            }
-
 
             // Finally, we return the solution plan or null otherwise
             return plan;

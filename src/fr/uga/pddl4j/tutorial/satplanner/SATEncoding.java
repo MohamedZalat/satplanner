@@ -37,7 +37,7 @@ public final class SATEncoding {
         this.steps = steps;
         // We get the initial state from the planning problem
         final BitState init = new BitState(problem.getInit());
-        System.out.println("init : "+init);
+        //System.out.println("init : "+init);
         // Encoding of init
         String list_init = "";
         int cpt = 0;
@@ -56,7 +56,7 @@ public final class SATEncoding {
 
         // We get the goal from the planning problem
         final BitState goal = new BitState(problem.getGoal());
-        System.out.println("goal : "+goal);
+        //System.out.println("goal : "+goal);
 
         // Encoding of goal
         //ArrayList<Integer> allInt = new ArrayList<>();
@@ -143,7 +143,11 @@ public final class SATEncoding {
     /*
      * SAT encoding for next step
      */
-    
+
+    public List<String> getDimacs() {
+        return dimacs;
+    }
+
     public List next()
     {
         return this.dimacs;
@@ -156,14 +160,14 @@ public final class SATEncoding {
     }
 
 
-    private static int[] unpair(int c)
+    public static int[] unpair(int c)
     {
         //fonction de décodage
         int w = (int) floor((sqrt(8 * c + 1) - 1)/2);
         int t = (w * w + w) / 2;
         int y = c - t;
         int x = w - y;
-        System.out.println(x +" x et y "+ y);
+        //System.out.println(x +" x et y "+ y);
         int result[] = {x, y};
         return result;
 
