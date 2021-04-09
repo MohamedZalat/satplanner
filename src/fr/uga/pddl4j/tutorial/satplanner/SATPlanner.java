@@ -93,8 +93,19 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                 // with absolute values less or equal to MAXVAR
                 // e.g. int [] clause = {1, -3, 7}; is fine
                 // while int [] clause = {1, -3, 7, 0}; is not fine
-            	
-            	
+
+                /*
+                //décodage d'une clause
+                int[] decode_goal = new int[2];
+                String[] tab_list = list_goal.split("\\.");
+
+                for (int i = 0; i < tab_list.length; i++)
+                {
+                    int[] tab_res = unpair(Integer.parseInt(tab_list[i]));
+                    decode_goal[i] = tab_res[0];
+                }
+            	*/
+                
                 int [] clause = {};
                 try {
                     solver.addClause(new VecInt(clause)); // adapt Array to IVecInt
@@ -107,8 +118,14 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
             // We are done. Working now on the IProblem interface
             IProblem ip = solver;
             try {
-                if (ip.isSatisfiable()) {
-                } else {
+                if (ip.isSatisfiable())
+                {
+                    //TODO
+
+                }
+                else
+                {
+                    //TODO
                 }
             } catch (TimeoutException e){
                 System.out.println("Timeout! No solution found!");

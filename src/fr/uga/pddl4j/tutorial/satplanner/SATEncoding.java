@@ -39,7 +39,6 @@ public final class SATEncoding {
         final BitState init = new BitState(problem.getInit());
         System.out.println("init : "+init);
         // Encoding of init
-        //ArrayList<Integer> allInt = new ArrayList<>();
         String list_init = "";
         int cpt = 0;
         for (int i = 0; i < init.cardinality(); i++)
@@ -74,7 +73,6 @@ public final class SATEncoding {
             cpt++;
         }
         this.dimacs.add(list_goal);
-        System.out.println("goal encodé : "+list_goal);
 
         // We get the operators of the problem
         for (int i = 0; i < problem.getOperators().size(); i++)
@@ -165,9 +163,10 @@ public final class SATEncoding {
         int t = (w * w + w) / 2;
         int y = c - t;
         int x = w - y;
-
+        System.out.println(x +" x et y "+ y);
         int result[] = {x, y};
         return result;
 
     }
+
 }
