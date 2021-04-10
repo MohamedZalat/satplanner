@@ -6,13 +6,19 @@ import fr.uga.pddl4j.planners.Planner;
 import fr.uga.pddl4j.planners.ProblemFactory;
 import fr.uga.pddl4j.planners.statespace.AbstractStateSpacePlanner;
 import fr.uga.pddl4j.planners.statespace.StateSpacePlanner;
+import fr.uga.pddl4j.util.BitOp;
 import fr.uga.pddl4j.util.BitState;
 import fr.uga.pddl4j.util.Plan;
 import fr.uga.pddl4j.util.SequentialPlan;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.http.HttpResponse.BodySubscribers;
 import java.util.Properties;
+
+import javax.swing.text.StyledEditorKit.BoldAction;
+
+import java.util.Arrays;
 import java.util.List;
 
 import org.sat4j.core.VecInt;
@@ -106,10 +112,9 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                     for (int index = 0; index < tab_list.length; index++) {
                         clause[index] = sat.pair(Integer.parseInt(tab_list[index]),step);
 
-                        //  System.out.print(clause[index]+ "  ,  ");
+                          System.out.print(clause[index]+ "  ,  ");
                     }
-                    //System.out.println();
-
+                    System.out.println();
                     try {
                         solver.addClause(new VecInt(clause)); // adapt Array to IVecInt
                     } catch (ContradictionException e){
@@ -117,16 +122,19 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                         System.exit(0);
                     }
                 }
-
+                step++;
+            }
                 // We are done. Working now on the IProblem interface
                 IProblem ip = solver;
                 try {
                     if (ip.isSatisfiable())
                     {
-                        step++;
                         //TODO
                         System.out.println("Solution FOUND!");
                         int[] resultat = ip.model();
+
+                        System.out.println(Arrays.toString(resultat));
+
 
                         for (int r:resultat) {
                             int[] resDecoded;
@@ -136,6 +144,10 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                                 resDecoded = sat.unpair(r);
                             }
                             System.out.println("step :"+resDecoded[1]+" op:"+resDecoded[0]);
+                            BitOp a = problem.getOperators().get(resDecoded[0]);
+                            
+                            plan.add(resDecoded[1], a);
+
                         }
                     }
                     else
@@ -146,7 +158,7 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                     System.out.println("Timeout! No solution found!");
                     System.exit(0);
                 }
-            }
+            
 
             // Finally, we return the solution plan or null otherwise
             return plan;
@@ -267,5 +279,11 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
 
         final Plan plan = planner.search(pb);
 
+        System.out.println("Résultat : " + plan.size());
+        for (BitOp bo : plan.actions()) {
+            System.out.println(bo.getName() + " " + Arrays.toString(bo.getParameters()));
+
+        }
+        
     }
 }
