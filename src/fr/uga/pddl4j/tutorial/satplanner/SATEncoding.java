@@ -21,7 +21,7 @@ public final class SATEncoding {
     /*
      * A SAT problem in dimacs format is a list of int list a.k.a clauses
      */
-    private List<String> dimacs = new ArrayList<String>();
+    public ArrayList<int[]> dimacs;
 
     /*
      * Current number of steps of the SAT encoding
@@ -35,133 +35,97 @@ public final class SATEncoding {
     public SATEncoding(final CodedProblem problem, final int steps) {
         super();
         this.steps = steps;
-        // We get the initial state from the planning problem
+        dimacs = new ArrayList();
+
+        // ----------- We get the initial state from the planning problem
         final BitState init = new BitState(problem.getInit());
-        //System.out.println("init : "+init);
+
         // Encoding of init
-        String list_init = "";
-        int cpt = 0;
-        for (int i = 0; i < init.cardinality(); i++)
-        {
-            cpt = init.nextSetBit(cpt);
-            list_init += cpt;
-            if(i != init.cardinality()-1)
-            {
-                list_init += ".";
-            }
-            cpt++;
-        }
-        this.dimacs.add(list_init);
         // Each fact is a unit clause
 
-        // We get the goal from the planning problem
+        for (int i = 0; i < problem.getRelevantFacts().size();i++){
+            if(init.nextSetBit(i) == i){
+                //System.out.println("w"+i);
+                int actionEncode = pair(i+1,0);
+                dimacs.add(new int[]{actionEncode});
+            }/*else{
+                //System.out.println("-w"+i);
+                dimacs.add(new int[]{(i+1)*-1});
+            }*/
+        }
+
+
+        // ----------- We get the goal from the planning problem
         final BitState goal = new BitState(problem.getGoal());
-        //System.out.println("goal : "+goal);
-
-        // Encoding of goal
-        //ArrayList<Integer> allInt = new ArrayList<>();
-        String list_goal = "";
-        cpt = 0;
-        for (int i = 0; i < goal.cardinality(); i++)
-        {
-            cpt = goal.nextSetBit(cpt);
-            list_goal += cpt;
-            if(i != goal.cardinality()-1)
-            {
-                list_goal += ".";
+        int elt = 0;
+        while ( elt!=-1){
+            elt = goal.nextSetBit(elt);
+            if(elt!=-1){
+                int actionEncode = pair(elt+1,steps);
+                dimacs.add(new int[]{actionEncode});
+                //System.out.println("w"+elt);
+                elt++;
             }
-            cpt++;
         }
-        this.dimacs.add(list_goal);
 
-        // We get the operators of the problem
-        for (int i = 0; i < problem.getOperators().size(); i++)
-        {
-            final BitOp a = problem.getOperators().get(i);
+        // ----------- We get the operators of the problem
+        for(int step = 0; step < steps; step++){
+          for (int action=0; action < problem.getOperators().size(); action++ ) {
+            final BitOp a = problem.getOperators().get(action);
+            int actionEncode = pair(action+1,step);
+
+            //  Preconditions
             final BitVector precond = a.getPreconditions().getPositive();
+            elt = 0;
+            while ( elt!=-1){
+              elt = precond.nextSetBit(elt);
+              if(elt != -1){
+                  int actionEncode2 = pair(elt+1,step);
+                  dimacs.add(new int[]{-actionEncode, actionEncode2});
+                  elt++;
+              }
+            }
+
+            //  Effects POSITIVE
             final BitVector positive = a.getUnconditionalEffects().getPositive();
+            elt = 0;
+            while ( elt!=-1){
+              elt = positive.nextSetBit(elt);
+              if(elt != -1){
+                  int actionEncode2 = pair(elt+1,step+1);
+                  dimacs.add(new int[]{-actionEncode,actionEncode2});
+                  elt++;
+              }
+            }
+
+            //  Effects Negative
             final BitVector negative = a.getUnconditionalEffects().getNegative();
-
-            // Encoding of precond
-            //ArrayList<Integer> allInt = new ArrayList<>();
-            String list_inter = "";
-            cpt = 0;
-            //System.out.println("precond "+precond.cardinality()+ "  "+precond.toString());
-            for (int j = 0; j < precond.cardinality(); j++)
-            {
-
-                cpt = precond.nextSetBit(cpt);
-                list_inter += cpt;
-                if(j != precond.cardinality()-1)
-                {
-                    list_inter += ".";
-                }
-                cpt++;
+            elt = 0;
+            while ( elt!=-1){
+              elt = negative.nextSetBit(elt);
+              if(elt != -1){
+                  int actionEncode2 = pair(elt+1,step+1);
+                  dimacs.add(new int[]{-actionEncode,actionEncode2*-1});
+                  elt++;
+              }
             }
-
-            list_inter += ".";
-
-            // Encoding of positive
-            //ArrayList<Integer> allInt = new ArrayList<>();
-            cpt = 0;
-            for (int j = 0; j < positive.cardinality(); j++)
-            {
-                cpt = positive.nextSetBit(cpt);
-                list_inter += cpt;
-                if(j != positive.cardinality()-1)
-                {
-                    list_inter += ".";
-                }
-                cpt++;
-            }
-
-            list_inter += ".";
-
-            // Encoding of negative
-            //ArrayList<Integer> allInt = new ArrayList<>();
-            cpt = 0;
-            for (int j = 0; j < negative.cardinality(); j++)
-            {
-                cpt = negative.nextSetBit(cpt);
-                list_inter += -cpt;
-                if(j != negative.cardinality()-1)
-                {
-                    list_inter += ".";
-                }
-                cpt++;
-            }
-            this.dimacs.add(list_inter);
+          }
         }
-        /*
-        for(Object a: dimacs)
-        {
-            System.out.println(" Dimacs : " + a.toString());
-        }
-        */
     }
 
     /*
      * SAT encoding for next step
      */
-
-    public List<String> getDimacs() {
-        return dimacs;
+    public List next() {
+        return null;
     }
 
-    public List next()
-    {
-        return this.dimacs;
-    }
-
-    public static int pair(int a, int b)
-    {
+    public static int pair(int a, int b) {
         int result =  (a + b) * (a + b + 1)/2 + b;
         return result;
     }
 
-
-    public static int[] unpair(int c)
-    {
+    public static int[] unpair(int c) {
         //fonction de décodage
         int w = (int) floor((sqrt(8 * c + 1) - 1)/2);
         int t = (w * w + w) / 2;
@@ -170,7 +134,20 @@ public final class SATEncoding {
         //System.out.println(x +" x et y "+ y);
         int result[] = {x, y};
         return result;
-
     }
 
+    @Override
+    public String toString() {
+        String res = "";
+        int i = 0;
+        for (int[] clause:dimacs) {
+            res+= i+"  :  ";
+            for (int elt: clause) {
+                res += elt+" ";
+            }
+            res += "\n";
+            i++;
+        }
+        return res;
+    }
 }

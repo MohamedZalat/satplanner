@@ -13,12 +13,8 @@ import fr.uga.pddl4j.util.SequentialPlan;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.http.HttpResponse.BodySubscribers;
-import java.util.Properties;
-
-import javax.swing.text.StyledEditorKit.BoldAction;
-
 import java.util.Arrays;
+import java.util.Properties;
 import java.util.List;
 
 import org.sat4j.core.VecInt;
@@ -92,73 +88,58 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
             // SAT Encoding starts here!
             final int steps = (int) arguments.get("steps");
 
-            int step= 1;
-            boolean solved = false;
-            SATEncoding sat = new SATEncoding(problem, steps);
+            int step = 0;
+            boolean solutionFound = false;
+            while (step<steps && !solutionFound){
 
-            while (step <steps/* && !solved*/) {
-
+                SATEncoding encoding = new SATEncoding(problem,step);
+                //System.out.println("---------"+step+"---------");
+                //System.out.println(encoding);
+                //System.out.println("--------------------------");
                 // Feed the solver using Dimacs format, using arrays of int
-                for (int i=0; i < sat.getDimacs().size(); i++) {
-                    // the clause should not contain a 0, only integer (positive or negative)
-                    // with absolute values less or equal to MAXVAR
-                    // e.g. int [] clause = {1, -3, 7}; is fine
-                    // while int [] clause = {1, -3, 7, 0}; is not fine
+                for (int i=0; i < encoding.dimacs.size(); i++) {
 
-                    String[] tab_list = sat.getDimacs().get(i).split("\\.");
-                    int [] clause = new int[tab_list.length];
-                    //System.out.println("Clause "+i);
-
-                    for (int index = 0; index < tab_list.length; index++) {
-                        clause[index] = sat.pair(Integer.parseInt(tab_list[index]),step);
-
-                          System.out.print(clause[index]+ "  ,  ");
-                    }
-                    System.out.println();
+                    int [] clause = encoding.dimacs.get(i);
                     try {
-                        solver.addClause(new VecInt(clause)); // adapt Array to IVecInt
+                        if(clause.length>0)solver.addClause(new VecInt(clause)); // adapt Array to IVecInt
                     } catch (ContradictionException e){
-                        System.out.println("SAT encoding failure!");
-                        System.exit(0);
+                        System.out.println("SAT encoding failure!"+e);
+                        //System.exit(0);
                     }
                 }
-                step++;
-            }
                 // We are done. Working now on the IProblem interface
                 IProblem ip = solver;
                 try {
-                    if (ip.isSatisfiable())
-                    {
-                        //TODO
-                        System.out.println("Solution FOUND!");
+                    if (ip.isSatisfiable()) {
+                        solutionFound = true;
+                        System.out.println("IS Satisfiable");
                         int[] resultat = ip.model();
 
-                        System.out.println(Arrays.toString(resultat));
+                        //System.out.println(Arrays.toString(resultat));
 
 
-                        for (int r:resultat) {
+                        for (int i=0;i<resultat.length;i++) {
                             int[] resDecoded;
-                            if(r<0){
-                                resDecoded = sat.unpair(-r);
-                            }else{
-                                resDecoded = sat.unpair(r);
-                            }
-                            System.out.println("step :"+resDecoded[1]+" op:"+resDecoded[0]);
-                            BitOp a = problem.getOperators().get(resDecoded[0]);
-                            
+                            resDecoded = encoding.unpair(resultat[i]);
+
+                            //System.out.println("step :"+resDecoded[1]+" op:"+resDecoded[0]);
+                            BitOp a = problem.getOperators().get(resDecoded[0]-1);
+
                             plan.add(resDecoded[1], a);
 
                         }
-                    }
-                    else
-                    {
-                        //TODO
+                    } else {
+                        System.out.println("NOT Satisfiable");
                     }
                 } catch (TimeoutException e){
                     System.out.println("Timeout! No solution found!");
                     System.exit(0);
                 }
-            
+
+                step++;
+            }
+
+
 
             // Finally, we return the solution plan or null otherwise
             return plan;
@@ -278,12 +259,15 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
         }
 
         final Plan plan = planner.search(pb);
-
         System.out.println("Résultat : " + plan.size());
         for (BitOp bo : plan.actions()) {
-            System.out.println(bo.getName() + " " + Arrays.toString(bo.getParameters()));
+            System.out.print(bo.getName());
+
+            for (int param: bo.getParameters()) {
+                System.out.print(" "+pb.getConstants().get(param));
+            }
+            System.out.println();
 
         }
-        
     }
 }
