@@ -67,13 +67,19 @@ public final class SATEncoding {
                 elt++;
             }
         }
+        System.out.println("steps vaut:"+steps);
 
         // ----------- We get the operators of the problem
         for(int step = 0; step < steps; step++){
-          for (int action=0; action < problem.getOperators().size(); action++ ) {
+            for (int action=0; action < problem.getOperators().size(); action++ ) {
             final BitOp a = problem.getOperators().get(action);
             int actionEncode = pair(action+1,step);
-
+            System.out.println("Action "+action+" : "+a.getName());
+                System.out.println(a.getParameters().toString());
+                for (int param: a.getParameters()) {
+                    System.out.print(" "+problem.getConstants().get(1));
+                }
+                System.out.println();
             //  Preconditions
             final BitVector precond = a.getPreconditions().getPositive();
             elt = 0;
