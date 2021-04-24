@@ -93,20 +93,18 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
             while (step<steps && !solutionFound){
 
                 SATEncoding encoding = new SATEncoding(problem,step);
-                //System.out.println("---------"+step+"---------");
-                //System.out.println(encoding);
-                //System.out.println("--------------------------");
+
                 // Feed the solver using Dimacs format, using arrays of int
                 for (int i=0; i < encoding.dimacs.size(); i++) {
-
                     int [] clause = encoding.dimacs.get(i);
                     try {
-                        if(clause.length>0)solver.addClause(new VecInt(clause)); // adapt Array to IVecInt
+                        if(clause.length>0) solver.addClause(new VecInt(clause)); // adapt Array to IVecInt
                     } catch (ContradictionException e){
                         System.out.println("SAT encoding failure!"+e);
                         //System.exit(0);
                     }
                 }
+
                 // We are done. Working now on the IProblem interface
                 IProblem ip = solver;
                 try {
@@ -115,18 +113,11 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                         System.out.println("IS Satisfiable");
                         int[] resultat = ip.model();
 
-                        //System.out.println(Arrays.toString(resultat));
-
-
                         for (int i=0;i<resultat.length;i++) {
                             int[] resDecoded;
                             resDecoded = encoding.unpair(resultat[i]);
-
-                            //System.out.println("step :"+resDecoded[1]+" op:"+resDecoded[0]);
                             BitOp a = problem.getOperators().get(resDecoded[0]-1);
-
                             plan.add(resDecoded[1], a);
-
                         }
                     } else {
                         System.out.println("NOT Satisfiable");

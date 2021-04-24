@@ -35,84 +35,76 @@ public final class SATEncoding {
     public SATEncoding(final CodedProblem problem, final int steps) {
         super();
         this.steps = steps;
-        dimacs = new ArrayList();
+        dimacs = new ArrayList<int[]>();
 
         // ----------- We get the initial state from the planning problem
         final BitState init = new BitState(problem.getInit());
 
         // Encoding of init
         // Each fact is a unit clause
-
-        for (int i = 0; i < problem.getRelevantFacts().size();i++){
-            if(init.nextSetBit(i) == i){
-                //System.out.println("w"+i);
-                int actionEncode = pair(i+1,0);
+        int bit = 0;
+        while ( bit!=-1){
+            bit = init.nextSetBit(bit);
+            if(bit!=-1){// À l'étape 0 bit est vrai
+                int actionEncode = pair(bit+1,0); // on encode bit+1 pour éviter le 0
                 dimacs.add(new int[]{actionEncode});
-            }/*else{
-                //System.out.println("-w"+i);
-                dimacs.add(new int[]{(i+1)*-1});
-            }*/
+                bit++;
+            }
         }
-
 
         // ----------- We get the goal from the planning problem
         final BitState goal = new BitState(problem.getGoal());
-        int elt = 0;
-        while ( elt!=-1){
-            elt = goal.nextSetBit(elt);
-            if(elt!=-1){
-                int actionEncode = pair(elt+1,steps);
+        bit = 0;
+        while ( bit!=-1){
+            bit = goal.nextSetBit(bit);
+            if(bit!=-1){// À la dernière étape steps bit est vrai
+                int actionEncode = pair(bit+1,steps); // on encode bit+1 pour éviter le 0
                 dimacs.add(new int[]{actionEncode});
-                //System.out.println("w"+elt);
-                elt++;
+                bit++;
             }
         }
-        System.out.println("steps vaut:"+steps);
 
-        // ----------- We get the operators of the problem
+        // Pour chaque étape step de 0 à steps - 1
         for(int step = 0; step < steps; step++){
+            // ----------- We get the operators of the problem
             for (int action=0; action < problem.getOperators().size(); action++ ) {
-            final BitOp a = problem.getOperators().get(action);
-            int actionEncode = pair(action+1,step);
-            System.out.println("Action "+action+" : "+a.getName());
-                System.out.println(a.getParameters().toString());
-                for (int param: a.getParameters()) {
-                    System.out.print(" "+problem.getConstants().get(1));
+                final BitOp a = problem.getOperators().get(action);
+                int actionEncode = pair(action+1,step);     // Encodage de l'action (+1 pour éviter le 0) a l'etape STEP
+
+                //  Preconditions
+                final BitVector precond = a.getPreconditions().getPositive();
+                bit = 0;
+                while ( bit!=-1){
+                    bit = precond.nextSetBit(bit);
+                  if(bit != -1){
+                      int actionEncode2 = pair(bit+1,step); // Encodage de la precondition bit a l'etape STEP
+                      dimacs.add(new int[]{-actionEncode, actionEncode2});  // ajout de la clause not(action) ou precondition
+                      bit++;
+                  }
                 }
-                System.out.println();
-            //  Preconditions
-            final BitVector precond = a.getPreconditions().getPositive();
-            elt = 0;
-            while ( elt!=-1){
-              elt = precond.nextSetBit(elt);
-              if(elt != -1){
-                  int actionEncode2 = pair(elt+1,step);
-                  dimacs.add(new int[]{-actionEncode, actionEncode2});
-                  elt++;
-              }
-            }
 
             //  Effects POSITIVE
             final BitVector positive = a.getUnconditionalEffects().getPositive();
-            elt = 0;
-            while ( elt!=-1){
-              elt = positive.nextSetBit(elt);
-              if(elt != -1){
-                  int actionEncode2 = pair(elt+1,step+1);
-                  dimacs.add(new int[]{-actionEncode,actionEncode2});
-                  elt++;
+
+            bit = 0;
+            while ( bit!=-1){
+                bit = positive.nextSetBit(bit);
+              if(bit != -1){
+                  int actionEncode2 = pair(bit+1,step+1);  // Encodage de l'effet Positive bit a l'etape STEP+1
+                  dimacs.add(new int[]{-actionEncode,actionEncode2}); //  ajout de la clause not(action) ou Effet Positive
+                  bit++;
               }
             }
 
             //  Effects Negative
             final BitVector negative = a.getUnconditionalEffects().getNegative();
-            elt = 0;
-            while ( elt!=-1){
-              elt = negative.nextSetBit(elt);
-              if(elt != -1){
-                  int actionEncode2 = pair(elt+1,step+1);
-                  dimacs.add(new int[]{-actionEncode,actionEncode2*-1});
-                  elt++;
+            bit = 0;
+            while ( bit!=-1){
+              bit = negative.nextSetBit(bit);
+              if(bit != -1){
+                  int actionEncode2 = pair(bit+1,step+1);  // Encodage de l'effet Negative bit a l'etape STEP+1
+                  dimacs.add(new int[]{-actionEncode,actionEncode2*-1});//  ajout de la clause not(action) ou not(Effet Negative)
+                  bit++;
               }
             }
           }
