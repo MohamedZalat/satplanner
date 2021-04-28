@@ -6,10 +6,7 @@ import fr.uga.pddl4j.planners.Planner;
 import fr.uga.pddl4j.planners.ProblemFactory;
 import fr.uga.pddl4j.planners.statespace.AbstractStateSpacePlanner;
 import fr.uga.pddl4j.planners.statespace.StateSpacePlanner;
-import fr.uga.pddl4j.util.BitOp;
-import fr.uga.pddl4j.util.BitState;
-import fr.uga.pddl4j.util.Plan;
-import fr.uga.pddl4j.util.SequentialPlan;
+import fr.uga.pddl4j.util.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -113,11 +110,30 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                         System.out.println("IS Satisfiable");
                         int[] resultat = ip.model();
 
+                        //autant d'actions que de step
+                        BitOp[] actionsPlan = new BitOp[step];
+                        int cpt_actions = 0;
                         for (int i=0;i<resultat.length;i++) {
                             int[] resDecoded;
+                            System.out.println("resultat : "+ resultat[0]+" "+ resultat[1]);
+
+                            //valeur forcément positive
+                            resultat[i] = Math.abs(resultat[i]);
                             resDecoded = encoding.unpair(resultat[i]);
-                            BitOp a = problem.getOperators().get(resDecoded[0]-1);
-                            plan.add(resDecoded[1], a);
+
+                            System.out.println("size : "+problem.getRelevantFacts().size());
+                            System.out.println("res[0] : "+resDecoded[0]);
+                            if(resDecoded[0] >= problem.getRelevantFacts().size())
+                            {
+                                //c'est une action, on l'enregistre
+                                BitOp action = problem.getOperators().get(resDecoded[0] - problem.getRelevantFacts().size());
+                                actionsPlan[cpt_actions] = action;
+                                cpt_actions++;
+                                plan.add(cpt_actions, action);
+                                action.getName();
+                            }
+
+
                         }
                     } else {
                         System.out.println("NOT Satisfiable");
@@ -129,7 +145,6 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
 
                 step++;
             }
-
 
 
             // Finally, we return the solution plan or null otherwise
