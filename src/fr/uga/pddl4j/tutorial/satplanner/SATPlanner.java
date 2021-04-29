@@ -9,8 +9,9 @@ import fr.uga.pddl4j.planners.statespace.StateSpacePlanner;
 import fr.uga.pddl4j.util.*;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Arrays;
+import java.io.PrintWriter;
 import java.util.Properties;
 import java.util.List;
 
@@ -21,6 +22,8 @@ import org.sat4j.specs.IProblem;
 import org.sat4j.specs.ISolver;
 import org.sat4j.specs.TimeoutException;
 import org.sat4j.tools.ModelIterator;
+
+import static fr.uga.pddl4j.tutorial.satplanner.SATEncoding.unpair;
 
 /**
  * This class implements a simple SAT planner based on SAT4J.
@@ -35,6 +38,7 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
      */
     private Properties arguments;
 
+    static String problemName;
 
     /**
      * Creates a new SAT planner with the default parameters.
@@ -67,87 +71,82 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
         // Otherwise, we start the search
         else {
 
+            List<int[]> clauses = null;
             // SAT solver timeout
             final int timeout = ((int) this.arguments.get(Planner.TIMEOUT));
             // SAT solver max number of var
-            final int MAXVAR = 1000000;
+            int MAXVAR = 50000;
             // SAT solver max number of clauses
-            final int NBCLAUSES = 500000;
+            int NBCLAUSES = 100000;
 
-            ISolver solver = SolverFactory.newDefault();
-            solver.setTimeout(timeout);
-            ModelIterator mi = new ModelIterator(solver);
 
-            // Prepare the solver to accept MAXVAR variables. MANDATORY for MAXSAT solving
-            solver.newVar(MAXVAR);
-            solver.setExpectedNumberOfClauses(NBCLAUSES);
 
-            // SAT Encoding starts here!
-            final int steps = (int) arguments.get("steps");
+            int max_step = (Integer) this.arguments.get("steps");
+            //On a pas eu le temps d optimiser pour avoir une étape initial cohérente avec le probleme donc on commence a 1
+            int current_step = 1;
+            SATEncoding encoder = new SATEncoding(problem, current_step);
 
-            int step = 0;
+
+            IProblem ip = null;
             boolean solutionFound = false;
-            while (step<steps && !solutionFound){
-
-                SATEncoding encoding = new SATEncoding(problem,step);
-
-                // Feed the solver using Dimacs format, using arrays of int
-                for (int i=0; i < encoding.dimacs.size(); i++) {
-                    int [] clause = encoding.dimacs.get(i);
+            //boucle tant que le sat solver ne trouve pas de solution ou que l'on atteint pas une limite (nb clauses ou temps)
+            try {
+                while ((current_step <= max_step) && !solutionFound) {
                     try {
-                        if(clause.length>0) solver.addClause(new VecInt(clause)); // adapt Array to IVecInt
-                    } catch (ContradictionException e){
-                        System.out.println("SAT encoding failure!"+e);
-                        //System.exit(0);
-                    }
-                }
+                        //Initialize solver
+                        ISolver solver = SolverFactory.newDefault();
+                        solver.setTimeout(timeout);
+                        solver.newVar(MAXVAR);
+                        solver.setExpectedNumberOfClauses(NBCLAUSES);
 
-                // We are done. Working now on the IProblem interface
-                IProblem ip = solver;
-                try {
-                    if (ip.isSatisfiable()) {
-                        solutionFound = true;
-                        System.out.println("IS Satisfiable");
-                        int[] resultat = ip.model();
-
-                        //autant d'actions que de step
-                        BitOp[] actionsPlan = new BitOp[step];
-                        int cpt_actions = 0;
-                        for (int i=0;i<resultat.length;i++) {
-                            int[] resDecoded;
-                            System.out.println("resultat : "+ resultat[0]+" "+ resultat[1]);
-
-                            //valeur forcément positive
-                            resultat[i] = Math.abs(resultat[i]);
-                            resDecoded = encoding.unpair(resultat[i]);
-
-                            System.out.println("size : "+problem.getRelevantFacts().size());
-                            System.out.println("res[0] : "+resDecoded[0]);
-                            if(resDecoded[0] >= problem.getRelevantFacts().size())
-                            {
-                                //c'est une action, on l'enregistre
-                                BitOp action = problem.getOperators().get(resDecoded[0] - problem.getRelevantFacts().size());
-                                actionsPlan[cpt_actions] = action;
-                                cpt_actions++;
-                                plan.add(cpt_actions, action);
-                                action.getName();
-                            }
-
-
+                        //on genere les clauses a l'etape +1
+                        clauses = encoder.next();
+                        //ajout des clauses au solver
+                        for (int[] clause : clauses) {
+                            solver.addClause(new VecInt(clause));
                         }
-                    } else {
-                        System.out.println("NOT Satisfiable");
+                        ip = solver;
+                        //si c'est solvable on s'arrete
+                        if (ip.isSatisfiable()) {
+                            solutionFound = true;
+                        }
+                        //si ce n'est pas solvable a l'etape n on boucle pour tester a n+1
+                        current_step++;
+                    } catch (ContradictionException e) {
+                        current_step++;
                     }
-                } catch (TimeoutException e){
-                    System.out.println("Timeout! No solution found!");
-                    System.exit(0);
                 }
-
-                step++;
+                //si on atteint la borne temporelle on s'arrete
+            } catch (TimeoutException e) {
+                System.out.println("Timeout! No solution found!");
+                System.exit(1);
             }
 
+            int factSize = problem.getRelevantFacts().size();
+            BitOp[] actions = new BitOp[current_step];
+            //réalisation du plan a partir de la solution rendu par le SAT solver
+            for (int variable : ip.model()) {
+                //traduction la variable pour obtenir le bitnum et l'etape
+                int[] resDecoded = unpair(variable);
+                int bitnum = resDecoded[0];
+                int step = resDecoded[1];
+                // si le bitnum est plus grand que le nombre de fait alors c'est une action
+                if (bitnum > factSize) {
+                    //on récupere l'encodage de l'action
+                    BitOp action = problem.getOperators().get(bitnum - factSize);
+                    //on la sauvegarde dans l'ordre grace a son étape
+                    actions[step - 1] = action;
+                }
+            }
+            //on sauvegarde les actions dans le plan
+            for (int i = 0; i < current_step - 1; i++) {
+                plan.add(0, actions[i + 1]);
+            }
 
-            // Finally, we return the solution plan or null otherwise
+            //si on n'a pas enlevé l'affichage on le réalise :
+            if ((int) arguments.get("quiet") == 0) {
+                System.out.println(problem.toString(plan));
+            }
             return plan;
         }
     }
@@ -163,6 +162,7 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                 .append("-f <str>    fact file name\n")
                 .append("-t <num>    SAT solver timeout in seconds\n")
                 .append("-n <num>    Max number of steps\n")
+                .append("-q          quiet console output\n")
                 .append("-h          print this message\n\n");
         Planner.getLogger().trace(strb.toString());
     }
@@ -177,7 +177,8 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
 
         // Get the default arguments from the super class
         final Properties arguments = StateSpacePlanner.getDefaultArguments();
-
+        arguments.put("quiet", 0);
+        arguments.put(Planner.TIMEOUT, 300);
         // Parse the command line and update the default argument value
         for (int i = 0; i < args.length; i += 2) {
             if ("-o".equalsIgnoreCase(args[i]) && ((i + 1) < args.length)) {
@@ -186,10 +187,14 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
             } else if ("-f".equalsIgnoreCase(args[i]) && ((i + 1) < args.length)) {
                 if (!new File(args[i + 1]).exists()) return null;
                 arguments.put(Planner.PROBLEM, new File(args[i + 1]));
+                problemName = args[i + 1];
             } else if ("-t".equalsIgnoreCase(args[i]) && ((i + 1) < args.length)) {
                 final int timeout = Integer.parseInt(args[i + 1]);
                 if (timeout < 0) return null;
                 arguments.put(Planner.TIMEOUT, timeout);
+            } else if ("-q".equalsIgnoreCase(args[i])) {
+                arguments.put("quiet", 1);
+                i--;
             } else if ("-n".equalsIgnoreCase(args[i]) && ((i + 1) < args.length)) {
                 final int steps = Integer.parseInt(args[i + 1]);
                 if (steps > 0)
@@ -208,24 +213,20 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
     /**
      * The main method of the <code>SATPlanner</code> example. The command line syntax is as
      * follow:
-     * <p>
-     * <pre>
      * usage of SATPlanner:
-     *
+     * <p>
      * OPTIONS   DESCRIPTIONS
-     *
+     * <p>
      * -o <i>str</i>   operator file name
      * -f <i>str</i>   fact file name
      * -t <i>num</i>   specifies the maximum CPU-time in seconds
      * -n <i>num</i>   specifies the maximum number of steps
+     * -q              quiet console output
      * -h              print this message
-     *
-     * </pre>
-     * </p>
      *
      * @param args the arguments of the command line.
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         final Properties arguments = SATPlanner.parseCommandLine(args);
         if (arguments == null) {
             SATPlanner.printUsage();
@@ -249,31 +250,68 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
             errorManager.printAll();
             System.exit(0);
         } else {
-            Planner.getLogger().trace("\nParsing domain file: successfully done");
-            Planner.getLogger().trace("\nParsing problem file: successfully done\n");
-        }
-
-        final CodedProblem pb = factory.encode();
-        Planner.getLogger().trace("\nGrounding: successfully done ("
-                + pb.getOperators().size() + " ops, "
-                + pb.getRelevantFacts().size() + " facts)\n");
-
-        if (!pb.isSolvable()) {
-            Planner.getLogger().trace(String.format("Goal can be simplified to FALSE."
-                    +  "No search will solve it%n%n"));
-            System.exit(0);
-        }
-
-        final Plan plan = planner.search(pb);
-        System.out.println("Résultat : " + plan.size());
-        for (BitOp bo : plan.actions()) {
-            System.out.print(bo.getName());
-
-            for (int param: bo.getParameters()) {
-                System.out.print(" "+pb.getConstants().get(param));
+            if ((int) arguments.get("quiet") == 0) {
+                Planner.getLogger().trace("\nParsing domain file: successfully done");
+                Planner.getLogger().trace("\nParsing problem file: successfully done\n");
             }
-            System.out.println();
-
         }
+        final CodedProblem pb = factory.encode();
+        if ((int) arguments.get("quiet") == 0) {
+            Planner.getLogger().trace("\nGrounding: successfully done ("
+                    + pb.getOperators().size() + " ops, "
+                    + pb.getRelevantFacts().size() + " facts)\n");
+
+            if (!pb.isSolvable()) {
+                Planner.getLogger().trace(String.format("Goal can be simplified to FALSE."
+                        + "No search will solve it%n%n"));
+                System.exit(0);
+            }
+        }
+
+        long begin = System.currentTimeMillis();
+        final Plan plan = planner.search(pb);
+        planner.getStatistics().setTimeToSearch(System.currentTimeMillis() - begin);
+        Planner.getLogger().trace(String.format("%8.2f seconds searching%n",(System.currentTimeMillis() - begin)/1000.0));
+        Planner.getLogger().trace(String.format("%nplan total cost: %4.2f%n%n", plan.cost()));
+
+
+        //Ecrire dans un fichier :
+
+        String time = String.format("%8.2f",(System.currentTimeMillis() - begin)/1000.0);
+        String cost = String.format("%4.2f", plan.cost());
+
+        String[] split_nom = problemName.split("/");
+        String[] nomPddl = split_nom[split_nom.length-1].split("\\.");
+        String d = split_nom[split_nom.length-2];
+        problemName = nomPddl[0];
+
+        System.out.println("domain :" +d);
+        System.out.println("problemName :" +problemName);
+
+        System.out.println("time :" +time);
+        System.out.println("cost :" +cost);
+
+
+
+        enregistreResultat(problemName,time,"Resultat/"+d+"/time.csv");
+        enregistreResultat(problemName,cost,"Resultat/"+d+"/cost.csv");
+
+    }
+
+    static public void enregistreResultat(String nomProblem, String resultat, String chemin) throws IOException {
+        if(!new File(chemin).exists())
+        {
+            new File(chemin).createNewFile();
+        }
+        //ouverture du fichier en écriture, doit être un fichier csv
+        FileWriter fw = new FileWriter(chemin,true);
+        PrintWriter out = new PrintWriter(fw);
+
+        //ecriture du résultat
+        String texte = nomProblem+";"+resultat+"\n";
+        out.println(texte);
+
+        out.close();
+        fw.close();
     }
 }
