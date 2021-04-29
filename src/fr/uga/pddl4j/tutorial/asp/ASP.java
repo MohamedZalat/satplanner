@@ -24,7 +24,9 @@ import fr.uga.pddl4j.util.MemoryAgent;
 import fr.uga.pddl4j.util.Plan;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -47,7 +49,8 @@ public final class ASP extends AbstractStateSpacePlanner {
     * The arguments of the planner.
     */
     private Properties arguments;
-        
+    static String problemName;
+
     /**
      * Creates a new ASP planner with the default parameters.
      * 
@@ -182,7 +185,7 @@ public final class ASP extends AbstractStateSpacePlanner {
     *
     * @param args the arguments of the command line.
     */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         final Properties arguments = ASP.parseCommandLine(args);
         if (arguments == null) {
             ASP.printUsage();
@@ -257,6 +260,22 @@ public final class ASP extends AbstractStateSpacePlanner {
         Planner.getLogger().trace(String.format("              %8.2f MBytes for searching%n", memory_used_search/(1024.0*1024.0)));
         Planner.getLogger().trace(String.format("              %8.2f MBytes total%n%n%n", memory/(1024.0*1024.0)));
 
+
+        String[] split_nom = problemName.split("/");
+        String[] nomPddl = split_nom[split_nom.length-1].split("\\.");
+        String d = split_nom[split_nom.length-2];
+        problemName = nomPddl[0];
+
+        System.out.println("domain :" +d);
+        System.out.println("problemName :" +problemName);
+
+        System.out.println("time :" +time);
+        System.out.println("cost :" +plan.cost());
+
+
+
+        enregistreResultat(problemName,searching_time/1000.0+"","Resultat/"+d+"/timeASP.csv");
+        enregistreResultat(problemName,plan.cost()+"","Resultat/"+d+"/costASP.csv");
     }
 
     /**
@@ -293,6 +312,8 @@ private static Properties parseCommandLine(String[] args) {
       } else if ("-f".equalsIgnoreCase(args[i]) && ((i + 1) < args.length)) {
         if (!new File(args[i + 1]).exists()) return null;
         arguments.put(Planner.PROBLEM, new File(args[i + 1]));
+        problemName = args[i + 1];
+
       } else if ("-t".equalsIgnoreCase(args[i]) && ((i + 1) < args.length)) {
         final int timeout = Integer.parseInt(args[i + 1]) * 1000;
         if (timeout < 0) return null;
@@ -309,4 +330,22 @@ private static Properties parseCommandLine(String[] args) {
     return (arguments.get(Planner.DOMAIN) == null 
         || arguments.get(Planner.PROBLEM) == null) ? null : arguments;
   }
+
+
+    static public void enregistreResultat(String nomProblem, String resultat, String chemin) throws IOException {
+        if(!new File(chemin).exists())
+        {
+            new File(chemin).createNewFile();
+        }
+        //ouverture du fichier en écriture, doit être un fichier csv
+        FileWriter fw = new FileWriter(chemin,true);
+        PrintWriter out = new PrintWriter(fw);
+
+        //ecriture du résultat
+        String texte = nomProblem+";"+resultat+"\n";
+        out.println(texte);
+
+        out.close();
+        fw.close();
+    }
 }
