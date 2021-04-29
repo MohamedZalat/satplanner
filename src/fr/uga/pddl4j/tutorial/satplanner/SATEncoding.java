@@ -19,15 +19,15 @@ public final class SATEncoding {
      */
     private final List<int[]> dimacs;
 
-    //map pour sauvegarder les transitions des actions entre 2 étapes
-    private HashMap<Integer, ArrayList<Integer>> transitions;
+    //hashmap permettant de passer d'une étape à l'autre
+    private HashMap<Integer, ArrayList<Integer>> clausesPrec;
 
-    // Goal to achieve
+    // Le but à atteindre
     private final BitState goal;
 
-    // Relevant Facts
+    // RelevantFacts
     private final List<IntExp> facts;
-    //le Coded Problem
+    //le problem
     private final CodedProblem problem;
 
     /*
@@ -40,57 +40,80 @@ public final class SATEncoding {
      * @param
      */
     public SATEncoding(final CodedProblem problem, final int steps) {
-        dimacs = new ArrayList<>();
+
         this.steps = steps;
         this.problem = problem;
         // We get the GOAL and Relevant Facts
-        goal = new BitState(problem.getGoal());
-        facts = problem.getRelevantFacts();
+        this.goal = new BitState(problem.getGoal());
+        this.facts = problem.getRelevantFacts();
 
-        // Encoding of init in step 1
+        dimacs = new ArrayList<>();
+
+        // Encoding of init
         // Each fact is a unit clause
         final BitState init = new BitState(problem.getInit());
-        for (int i = 0; i < facts.size(); i++) {
+        for (int i = 0; i < this.facts.size(); i++)
+        {
             int actionEncode = pair(i, 1);  //Encodage
-            if (init.get(i)) {
-                dimacs.add(new int[]{actionEncode});
-            } else {
-                dimacs.add(new int[]{-actionEncode});
+            if (init.get(i))
+            {
+                //positifs
+                this.dimacs.add(new int[]{actionEncode});
+            }
+            else
+            {
+                //négatifs :  encodage * -1
+                this.dimacs.add(new int[]{-actionEncode});
             }
         }
 
-        //generation des clauses pour les étapes qu'on veut "sauter" au debut
-        for (int i = 1; i < steps; i++) {
+        //On génère les clauses jusqu'à l'étape que l'on souhaite réaliser
+        for (int i = 1; i < steps; i++)
+        {
             next();
         }
     }
 
-    // To get the list of goal clauses
+    /**
+     *
+     * @return : liste des clauses du but
+     */
     private List<int[]> getGoal() {
-        List<int[]> list = new ArrayList<>();
-        for (int i = 0; i < facts.size(); i++) {
+
+        List<int[]> clauses = new ArrayList<>();
+        for (int i = 0; i < this.facts.size(); i++)
+        {
             int[] clause = new int[1];
-            if (goal.get(i)) {
-                clause[0] = pair(i, steps + 1);
-                list.add(clause);
+            if (this.goal.get(i))
+            {
+                //on code seulement les choses positives du but
+                clause[0] = pair(i, this.steps + 1);
+                clauses.add(clause);
             }
         }
-        return list;
+
+        return clauses;
     }
 
     /**
-     * Add a clause to dimacs List
+     * ajoute une clause au fichier dimacs
      */
-    private void addClause(int[] clauseTab) {
-        dimacs.add(clauseTab);
+    private void addClause(int[] clause)
+    {
+        this.dimacs.add(clause);
     }
 
     /**
-     * To add the coded actions with the current step
+     *
+     * @return les clauses générées à cet étape
      */
     public List<int[]> next() {
-        transitions = new HashMap<>();
-        for (int i = 0; i < problem.getOperators().size(); i++) {
+
+        this.clausesPrec = new HashMap<>();
+
+        //on ajoute les opérations dans l'ensemble des clauses
+        for (int i = 0; i < problem.getOperators().size(); i++)
+        {
             addAction(i);
         }
 
@@ -149,8 +172,8 @@ public final class SATEncoding {
                 clause[1] = pair(i, steps + 1);
                 addClause(clause);
 
-                transitions.putIfAbsent(i, new ArrayList<>());
-                transitions.get(i).add(code_op);
+                this.clausesPrec.putIfAbsent(i, new ArrayList<>());
+                this.clausesPrec.get(i).add(code_op);
             }
             //genere les clause pour les effets négatif qu'elle entraine à l'etape +1
             if (negative.get(i)) {
@@ -159,8 +182,8 @@ public final class SATEncoding {
                 clause[1] = -pair(i, steps + 1);
                 addClause(clause);
 
-                transitions.putIfAbsent(-i, new ArrayList<>());
-                transitions.get(-i).add(code_op);
+                this.clausesPrec.putIfAbsent(-i, new ArrayList<>());
+                this.clausesPrec.get(-i).add(code_op);
             }
         }
     }
@@ -172,41 +195,71 @@ public final class SATEncoding {
      * genere et ajoute à dimac les clauses de transition à partir de la map de transition
      */
     private void addTransitionsToDimacs() {
-        for (Map.Entry<Integer, ArrayList<Integer>> operations_fi : transitions.entrySet()) {
-            ArrayList<Integer> clause = operations_fi.getValue();
+        for (Map.Entry<Integer, ArrayList<Integer>> op : this.clausesPrec.entrySet()) {
+            ArrayList<Integer> clause = op.getValue();
 
-            if (operations_fi.getKey() > 0) {
-                clause.add(pair(operations_fi.getKey(), steps));
-                clause.add(-pair(operations_fi.getKey(), steps + 1));
+            if (op.getKey() > 0) {
+                //codage de l'opération
+                clause.add(pair(op.getKey(), steps));
+                //négation de l'opération à l'étape d'après
+                clause.add(-pair(op.getKey(), steps + 1));
 
             } else {
-                clause.add(-pair(-operations_fi.getKey(), steps));
-                clause.add(pair(-operations_fi.getKey(), steps + 1));
+                //négatif à cet etape donc positif a l'étape d'après
+                clause.add(-pair(-op.getKey(), steps));
+                clause.add(pair(-op.getKey(), steps + 1));
             }
-            //Transform to table of int then ADD to dimacs
-            int[] clauseTab = new int[clause.size()];
-            for (int i=0; i<clause.size();i++) {
-                clauseTab[i] = clause.get(i);
+
+            int[] tab_param = new int[clause.size()];
+            int cpt = 0;
+            for (int param: clause)
+            {
+                tab_param[cpt] = param;
+                cpt++;
             }
-            addClause(clauseTab);
+            //ajout de la clause dans dimacs
+            addClause(tab_param);
         }
 
     }
 
+    /**
+     *
+     * @param a : opération, fact
+     * @param b : etape
+     * @return : codage de a et b sous un unique entier
+     */
     private static int pair(int a, int b) {
         return ((a + b) * (a + b + 1) / 2 + b) + 1;
     }
 
+    /**
+     *
+     * @param z : l'entier a décodé
+     * @return : un tableau avec le numéro de l'op ou du fact en premier et l'étape en deuxième
+     */
     public static int[] unpair(int z) {
+
+        //valeur absolue pour lé décodage !
         int[] tmp = decodage(Math.abs(z));
 
-        if (z >= 0) {
+        if (z >= 0)
+        {
+            //action, fact positif
             return tmp;
-        } else {
+        }
+        else
+        {
+            //action, fact négatif
             return new int[]{-tmp[0], tmp[1]};
         }
     }
 
+    /**
+     *
+     * @param z : l'entier a décodé
+     * @return : un tableau avec le numéro de l'op ou du fact en premier et l'étape en deuxième
+     */
     private static int[] decodage(int z) {
         z--;
 
@@ -221,12 +274,15 @@ public final class SATEncoding {
     /**
      * affiche les clauses de la liste
      *
-     * @param clauses la liste a afficher
+     * @param : clauses la liste a afficher
      */
-    public void showClause(List<int[]> clauses) {
-        for (int[] clause : clauses) {
+    public void AfficheClauses(List<int[]> clauses)
+    {
+        for (int[] clause : clauses)
+        {
             System.out.print("[ ");
-            for (int variable : clause) {
+            for (int variable : clause)
+            {
                 System.out.print(variable + " v");
             }
             System.out.println(" ] ^");
@@ -234,17 +290,19 @@ public final class SATEncoding {
     }
 
     /**
-     * affiche les clauses de la liste en decodant leurs couplages
+     * affiche les clauses décodées
      *
-     * @param clauses la liste à afficher
+     * @param : clauses la liste à afficher
      */
     public void showUnpairing(List<int[]> clauses) {
-        for (int[] clause : clauses) {
-            for (int variable : clause) {
+        for (int[] clause : clauses)
+        {
+            for (int variable : clause)
+            {
                 int[] tmp = unpair(variable);
                 System.out.print("( " + tmp[0] + " , " + tmp[1] + " ) ");
             }
-            System.out.println(" ^");
+            System.out.println(" ^ ");
         }
     }
 
