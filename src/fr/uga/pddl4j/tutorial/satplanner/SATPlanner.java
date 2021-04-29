@@ -293,22 +293,33 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
 
 
 
-        enregistreResultat(problemName,time,"Resultat/"+d+"/time.csv");
-        enregistreResultat(problemName,cost,"Resultat/"+d+"/cost.csv");
+        enregistreResultat(problemName,time,"Resultat/"+d+"/time2.csv");
+        enregistreResultat(problemName,cost,"Resultat/"+d+"/cost2.csv");
 
     }
 
     static public void enregistreResultat(String nomProblem, String resultat, String chemin) throws IOException {
+
+        boolean creation = false;
+
         if(!new File(chemin).exists())
         {
             new File(chemin).createNewFile();
+            creation = true;
         }
         //ouverture du fichier en écriture, doit être un fichier csv
         FileWriter fw = new FileWriter(chemin,true);
         PrintWriter out = new PrintWriter(fw);
 
+
+        if(creation)
+        {
+            //on écrit le nom des colonnes
+            String nom_colonne = "problems;values";
+            out.println(nom_colonne);
+        }
         //ecriture du résultat
-        String texte = nomProblem+";"+resultat+"\n";
+        String texte = nomProblem+";"+resultat;//+"\n";
         out.println(texte);
 
         out.close();
