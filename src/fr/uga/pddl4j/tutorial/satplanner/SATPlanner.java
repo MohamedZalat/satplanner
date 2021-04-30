@@ -300,9 +300,9 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
 
     /**
      *
-     * @param nomProblem :
-     * @param resultat
-     * @param chemin
+     * @param nomProblem : le nom du problème qui a été lancé ( ici, généralement p01, p02...)
+     * @param resultat : le résultat que l'on obtient pour la métrique soit de temps soit de coût du plan
+     * @param chemin : chemin vers le fichier dans lequel on enregistre les données (le créé s'il n'existe pas)
      * @throws IOException
      */
     static public void enregistreResultat(String nomProblem, float resultat, String chemin) throws IOException {
