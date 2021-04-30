@@ -276,9 +276,9 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
 
 
         //Ecrire dans un fichier :
-
-        String time = String.format("%8.2f",(System.currentTimeMillis() - begin)/1000.0);
-        String cost = String.format("%4.2f", plan.cost());
+        float time = (float) ((System.currentTimeMillis() - begin)/1000.0);
+        String timeString = String.format("%f",time);
+        String cost = String.format("%f", plan.cost());
 
         String[] split_nom = problemName.split("/");
         String[] nomPddl = split_nom[split_nom.length-1].split("\\.");
@@ -288,17 +288,24 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
         System.out.println("domain :" +d);
         System.out.println("problemName :" +problemName);
 
-        System.out.println("time :" +time);
+        System.out.println("time :" +timeString);
         System.out.println("cost :" +cost);
 
 
 
         enregistreResultat(problemName,time,"Resultat/"+d+"/time.csv");
-        enregistreResultat(problemName,cost,"Resultat/"+d+"/cost.csv");
+        enregistreResultat(problemName,(float)plan.cost(),"Resultat/"+d+"/cost.csv");
 
     }
 
-    static public void enregistreResultat(String nomProblem, String resultat, String chemin) throws IOException {
+    /**
+     *
+     * @param nomProblem :
+     * @param resultat
+     * @param chemin
+     * @throws IOException
+     */
+    static public void enregistreResultat(String nomProblem, float resultat, String chemin) throws IOException {
         boolean creation = false;
         if(!new File(chemin).exists())
         {
