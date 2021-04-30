@@ -299,16 +299,24 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
     }
 
     static public void enregistreResultat(String nomProblem, String resultat, String chemin) throws IOException {
+        boolean creation = false;
         if(!new File(chemin).exists())
         {
             new File(chemin).createNewFile();
+            creation = true;
         }
         //ouverture du fichier en écriture, doit être un fichier csv
         FileWriter fw = new FileWriter(chemin,true);
         PrintWriter out = new PrintWriter(fw);
 
+        if (creation)
+        {
+            //on ajoute le nom des colonnes
+            out.println("problem Name;Valeurs");
+        }
+
         //ecriture du résultat
-        String texte = nomProblem+";"+resultat+"\n";
+        String texte = nomProblem+";"+resultat;
         out.println(texte);
 
         out.close();
