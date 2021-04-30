@@ -104,11 +104,6 @@ public final class SATEncoding {
     }
 
 
-    // action => precondition1 ^ ..... preconditionN ^ positifefect1 ^ ... positifefectN ^ - negatifeffect1 ^ ... - negatifeffectN
-    // A => B  equivalent a  -A v B
-    // -code_op v ( pre1 ^ pre2 ^ pre3 ^ positifefect1 ^ positifeffect2 ^ - negatifeffect1 )
-    // (-code_op v pre1) ^ (-code_op  v pre2) ...
-
     /**
      * ajoute les clause en lien avec l'action a Dimac
      *
@@ -164,9 +159,6 @@ public final class SATEncoding {
             }
         }
     }
-
-    // fi ^ - fi+1 => a v a4 v ... ai
-    // -fi v fi+1 v a v a4 v ... ai
 
     /**
      * genere et ajoute à dimac les clauses de transition à partir de la map de transition
