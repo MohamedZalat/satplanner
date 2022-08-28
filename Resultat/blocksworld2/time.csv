@@ -1,0 +1,23 @@
+Planner Name;Problem Name;Total Time
+SATPlanner;pb2;0.032
+SATPlanner;pb3;0.047
+SATPlanner;pb5;0.157
+SATPlanner;pb6;0.344
+SATPlanner;pb7;1.909
+SATPlanner;pb8;7.026
+SATPlanner;pb9;80.378
+GraphPlan;pb2;0.0030913
+GraphPlan;pb3;0.0051754
+GraphPlan;pb4;0.0106865
+GraphPlan;pb5;0.0125896
+GraphPlan;pb6;0.0229755
+GraphPlan;pb7;0.0321621
+GraphPlan;pb8;0.0445584
+GraphPlan;pb9;0.0719658
+GraphPlan;pb10;0.099154
+GraphPlan;pb11;0.2733442
+GraphPlan;pb12;0.9807001
+GraphPlan;pb13;5.202439
+GraphPlan;pb14;34.337753
+GraphPlan;pb15;249.92769
+

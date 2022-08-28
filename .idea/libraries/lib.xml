@@ -4,6 +4,8 @@
       <root url="jar://$PROJECT_DIR$/lib/org.sat4j.core.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/sat4j-sat.jar!/" />
       <root url="jar://$PROJECT_DIR$/lib/pddl4j-3.8.3.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/pddl4j-v1.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/graphplan.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

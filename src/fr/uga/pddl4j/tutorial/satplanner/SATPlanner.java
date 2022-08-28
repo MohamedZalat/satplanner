@@ -22,6 +22,9 @@ import org.sat4j.specs.IProblem;
 import org.sat4j.specs.ISolver;
 import org.sat4j.specs.TimeoutException;
 import org.sat4j.tools.ModelIterator;
+import pddl4j.PDDLObject;
+import pddl4j.Parser;
+import pddl4j.graphplan.Graphplan;
 
 import static fr.uga.pddl4j.tutorial.satplanner.SATEncoding.unpair;
 
@@ -163,6 +166,7 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                 .append("-t <num>    SAT solver timeout in seconds\n")
                 .append("-n <num>    Max number of steps\n")
                 .append("-q          quiet console output\n")
+                .append("-p <num>    0 for SATPlanner, 1 for Graphplan\n")
                 .append("-h          print this message\n\n");
         Planner.getLogger().trace(strb.toString());
     }
@@ -202,12 +206,20 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
                 else
                     return null;
             } else {
-                return null;
+//                return null;
             }
         }
         // Return null if the domain or the problem was not specified
         return (arguments.get(Planner.DOMAIN) == null
                 || arguments.get(Planner.PROBLEM) == null) ? null : arguments;
+    }
+
+    public static int parseTypeOfPlanner(String[] args) {
+        for (int i = 0; i < args.length; i += 2) {
+            if ("-p".equalsIgnoreCase(args[i]) && ((i + 1) < args.length))
+                return Integer.parseInt(args[i + 1]);
+        }
+        return 0;
     }
 
     /**
@@ -228,11 +240,24 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
      */
     public static void main(String[] args) throws IOException {
         final Properties arguments = SATPlanner.parseCommandLine(args);
+        final int plannerType = SATPlanner.parseTypeOfPlanner(args);
+
         if (arguments == null) {
             SATPlanner.printUsage();
             System.exit(0);
         }
 
+        final String domainFilePath = ((File) arguments.get(Planner.DOMAIN)).getPath();
+        final String problemFileName = ((File) arguments.get(Planner.PROBLEM)).getPath();
+        if(plannerType == 0)
+            SATPlannerMain(domainFilePath, problemFileName, arguments);
+        else if(plannerType == 1) {
+            graphPlanMain(domainFilePath, problemFileName, arguments);
+        }
+
+    }
+
+    public static void SATPlannerMain(String domainFilePath, String problemFileName, Properties arguments) {
         final SATPlanner planner = new SATPlanner(arguments);
         final ProblemFactory factory = ProblemFactory.getInstance();
 
@@ -291,11 +316,84 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
         System.out.println("time :" +timeString);
         System.out.println("cost :" +cost);
 
+        try {
+            enregistreResultat("SATPlanner", problemName,time,"Resultat/"+d+"/time.csv");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
 
 
-        enregistreResultat(problemName,time,"Resultat/"+d+"/time.csv");
-        enregistreResultat(problemName,(float)plan.cost(),"Resultat/"+d+"/cost.csv");
+    public static void graphPlanMain(String domainFilePath, String problemFileName, Properties arguments){
+        try {
+                // Gets the pddl compiler options
+                Properties options = Graphplan.getParserOptions();
+                // Creates an instance of the java pddl compiler
+                Parser parser = new Parser(options);
+                PDDLObject domain = parser.parse(new File(domainFilePath));
+                PDDLObject problem = parser.parse(new File(problemFileName));
+                PDDLObject pb = null;
+                if (domain != null && problem != null) {
+                    pb = parser.link(domain, problem);
+                }
+                // Gets the error manager of the pddl compiler
+                pddl4j.ErrorManager mgr = parser.getErrorManager();
+                // If the compilation produces errors we print it and stop
+                if (mgr.contains(pddl4j.ErrorManager.Message.ERROR)) {
+                    mgr.print(pddl4j.ErrorManager.Message.ALL);
+                }
+                // else we print the warning and start the planning process
+                else {
 
+                    mgr.print(pddl4j.ErrorManager.Message.WARNING);
+
+                    System.out.println("\nParsing domain \"" + domain.getDomainName() + "\" done successfully ...");
+                    System.out.println("Parsing problem \"" + problem.getProblemName() + "\" done successfully ...\n");
+
+                    Graphplan planner = new Graphplan(pb);
+                    planner.preprocessing();
+                    pddl4j.graphplan.Plan plan = planner.solve();
+
+                    if (plan != null) {
+                        System.out.println("\nfound plan as follows:\n");
+                        Graphplan.printPlan(plan);
+                    } else {
+                        System.out.println("\nno solution plan found\n");
+                    }
+
+                    final double p_time = planner.p_time/1000000000.0;
+                    final double g_time = planner.g_time/1000000000.0;
+                    final double s_time = planner.s_time/1000000000.0;
+                    final double m_time = planner.m_time/1000000000.0;
+                    final double t_time = p_time + g_time + s_time;
+                    System.out.printf("Time spent : %8.2f seconds preprocessing \n", p_time);
+                    System.out.printf("             %8.2f seconds build graph \n", g_time);
+                    System.out.printf("             %8.2f seconds calculating exclusions \n", m_time);
+                    System.out.printf("             %8.2f seconds searching graph \n", s_time);
+                    System.out.printf("             %8.2f seconds total time \n", t_time);
+
+                    //Ecrire dans un fichier :
+                    float time = (float) (t_time);
+                    String timeString = String.format("%f",time);
+
+                    String[] split_nom = problemName.split("/");
+                    String[] nomPddl = split_nom[split_nom.length-1].split("\\.");
+                    String d = split_nom[split_nom.length-2];
+                    problemName = nomPddl[0];
+
+                    System.out.println("time :" +timeString);
+
+                    try {
+                        enregistreResultat("GraphPlan", problemName,(float)t_time,"Resultat/"+d+"/time.csv");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+            }
+        } catch (Throwable t) {
+            System.err.println(t.getMessage());
+            t.printStackTrace(System.err);
+        }
     }
 
     /**
@@ -305,7 +403,7 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
      * @param chemin : chemin vers le fichier dans lequel on enregistre les données (le créé s'il n'existe pas)
      * @throws IOException
      */
-    static public void enregistreResultat(String nomProblem, float resultat, String chemin) throws IOException {
+    static public void enregistreResultat(String nomPlanner, String nomProblem, float resultat, String chemin) throws IOException {
         boolean creation = false;
         if(!new File(chemin).exists())
         {
@@ -319,11 +417,11 @@ public final class SATPlanner extends AbstractStateSpacePlanner {
         if (creation)
         {
             //on ajoute le nom des colonnes
-            out.println("problem Name;Valeurs");
+            out.println("Planner Name;Problem Name;Total Time");
         }
 
         //ecriture du résultat
-        String texte = nomProblem+";"+resultat;
+        String texte = nomPlanner+";"+nomProblem+";"+resultat;
         out.println(texte);
 
         out.close();
